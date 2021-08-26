@@ -1,0 +1,60 @@
+Name: test
+TableName: database.table
+Description: test insert
+Repeat: true
+Times: 10
+# Times: 1
+Columns:
+  - Column: uuid4
+    Type: uuid4
+  - Column: hoge_id
+    Type: int
+    Value:
+      Choice: random
+      In:
+        - 1
+        - 2
+        - 3
+        - 4
+        
+  - Column: user_id
+    Type: string
+    Value:
+      Choice: random
+      In:
+        - user1
+        - user2
+  - Column: flg
+    Type: bool
+    Value:
+      Choice: random
+      In: 
+        - true
+        - false
+  - Column: created_at
+    Type: int64
+    Value:
+      Choice: random
+      Min: 1609426800
+      Max: 1640962799
+  - Column: updated_at
+    Type: int64
+    Value:
+      Const: 1
+
+# template
+# 範囲
+# - Column: name
+#   Type: int
+#   Value:
+#     Const: 1
+#     Min: 0
+#     Max: 1000
+#     Choice: random / asc / desc
+#     In:
+#       - 0
+#       - 2
+#       - 4
+# priotiry
+# Const > Min,Max > In
+# 
