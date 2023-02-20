@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
-	"time"
+	"runtime"
+	"runtime/pprof"
 
 	"github.com/goccy/go-yaml"
 )
@@ -18,12 +18,11 @@ var (
 
 const (
 	ValueTypeUUID4  = "uuid4"
+	ValueTypeULID   = "ulid"
 	ValueTypeString = "string"
 	ValueTypeBool   = "bool"
-	ValueTypeInt    = "int"
-	ValueTypeInt64  = "int64"
-	ValueTypeUint   = "uint"
-	ValueTypeUint64 = "uint64"
+	ValueTypeNumber = "number"
+	ValueTypeDate   = "date"
 )
 
 const (
@@ -37,11 +36,29 @@ const (
 )
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
 	log.SetFlags(log.Lshortfile)
 }
 
 func main() {
+	f, err := os.Create("profile_cpu")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close()
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
+
+	mf, err := os.Create("profile_memory")
+	if err != nil {
+		log.Fatal("could not create memory profile: ", err)
+	}
+	defer mf.Close()
+	runtime.GC() // get up-to-date statistics
+	if err := pprof.WriteHeapProfile(mf); err != nil {
+		log.Fatal("could not write memory profile: ", err)
+	}
 	if err := run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -54,7 +71,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	_ = f
 	var setting GommySetting
 	if err := yaml.Unmarshal(f, &setting); err != nil {
 		return err
@@ -76,7 +92,7 @@ func run() error {
 }
 
 func createMySQLInsert(s *GommySetting) string {
-	q := "insert into %s ( %s ) values %s;"
+	q := "INSERT INTO %s (%s) VALUES %s;"
 	var columns, valuesQuery string
 	for _, v := range s.Columns {
 		v.enclosure = EnclosureDoubleQuotation
@@ -86,7 +102,7 @@ func createMySQLInsert(s *GommySetting) string {
 	for i := 0; i < s.Times; i++ {
 		valuesQuery += "("
 		for _, v := range s.Columns {
-			valuesQuery += v.Value() + ","
+			valuesQuery += v.Value(i) + ","
 		}
 		valuesQuery = valuesQuery[:len(valuesQuery)-1]
 		valuesQuery += "),"
@@ -104,7 +120,7 @@ func createCSV(s *GommySetting) string {
 	for i := 0; i < s.Times; i++ {
 		body += "\n"
 		for _, v := range s.Columns {
-			body += v.Value() + ","
+			body += v.Value(i) + ","
 		}
 		body = body[:len(body)-1]
 	}
